@@ -1,6 +1,10 @@
+#define FASTLED_RGBW
+// unitl FastLED supports RGBW, use fork that supports it
+// https://github.com/coryking/FastLED
+
 #include <FastLED.h>
-#define NUM_LEDS 19
-#define LED_PIN 2
+#define NUM_LEDS 16
+#define LED_PIN D2
 
 #define STATIC_COLOR CHSV(30, 208, 127)
 #define DYNAMIC_COLOR CHSV(30, 208, 127)
@@ -94,7 +98,7 @@ class DynamicLamp : public LedGroup
     bool m_lightsOn;
     uint32_t dontChangeAgainUntil;
   public:
-    DynamicLamp(uint32_t t_indexes, size_t t_indexCount, CHSV t_color) : LedGroup(t_indexes, t_indexCount, TYPE_DYNAMIC), m_staticColor(t_color), m_lightsOn(true)
+    DynamicLamp(uint32_t* t_indexes, size_t t_indexCount, CHSV t_color) : LedGroup(t_indexes, t_indexCount, TYPE_DYNAMIC), m_staticColor(t_color), m_lightsOn(true)
     {
       setColor(m_staticColor);
       dontChangeAgainUntil = millis();
@@ -177,7 +181,7 @@ class StaticLamp : public LedGroup
   private:
     CHSV m_staticColor;
   public:
-    StaticLamp(uint32_t t_indexes, size_t t_indexCount, CHSV t_color) : LedGroup(t_indexes, t_indexCount, TYPE_STATIC), m_staticColor(t_color)
+    StaticLamp(uint32_t* t_indexes, size_t t_indexCount, CHSV t_color) : LedGroup(t_indexes, t_indexCount, TYPE_STATIC), m_staticColor(t_color)
     {
     }
 
@@ -199,7 +203,7 @@ class ExplosionLamp : public LedGroup
     uint16_t explosionDurationMs = 50;
     bool running;
   public:
-    ExplosionLamp(uint32_t t_indexes, size_t t_indexCount) : LedGroup(t_indexes, t_indexCount, TYPE_EXPLOSION), running(false)
+    ExplosionLamp(uint32_t* t_indexes, size_t t_indexCount) : LedGroup(t_indexes, t_indexCount, TYPE_EXPLOSION), running(false)
     {
     }
 
@@ -426,19 +430,35 @@ class House
 
 #define NUM_HOUSES 4
 House* houses[NUM_HOUSES];
-uint32_t house1_floor[] = { 0, 2, 4, 6};
-uint32_t house1_room1[] = {3};
-uint32_t house1_explosion[] = {1, 5, 0, 6};
+// floorish
+uint32_t house1_floor[] = { 0, 1 };
+uint32_t house1_room1[] = {2};
 
-uint32_t house2_floor[] = {8, 9, 10, 11};
-uint32_t house2_room1[] = {7};
-uint32_t house2_room2[] = {12};
+// weasley
+uint32_t house2_floor[] = {5, 6, 8};
+uint32_t house2_floor_ex[] = {7};
+uint32_t house2_room1[] = {4};
+uint32_t house2_room2[] = {9};
 
-uint32_t house3_floor[] = {14, 15, 16};
-uint32_t house3_room1[] = {17};
-uint32_t house3_room2[] = {18};
+// ollivander
+uint32_t house3_explosion[] = {10, 11, 12, 14};
+uint32_t house3_floor[] = {13, 15};
+// uint32_t house3_floor[] = {13};
+// uint32_t house3_room1[] = {15}; // peut-etre
 
-uint32_t streetlight[] = {13};
+uint32_t streetlight[] = {3};
+
+// uint32_t house1_floor[] = { 0, 1 };
+// uint32_t house1_room1[] = {2};
+
+// uint32_t house2_floor[] = {3, 4, 5, 6};
+// uint32_t house2_room1[] = {7};
+// uint32_t house2_room2[] = {8};
+
+// uint32_t house3_explosion[] = {9, 10, 11, 12};
+
+// uint32_t streetlight[] = {13};
+
 
 void createGroup() {
 
@@ -452,28 +472,31 @@ void setup() {
   Serial.begin(9600);
   while (!Serial);
   
-   FastLED.addLeds<NEOPIXEL, LED_PIN>(leds, NUM_LEDS);
+  //  FastLED.addLeds<NEOPIXEL, LED_PIN>(leds, NUM_LEDS);
   
   //Depending on your LEDs the above line needs to be different. Example for a WS2812B below.
   //FastLED.addLeds<WS2812B, LED_PIN, GRB>(leds, NUM_LEDS);
 
+   FastLED.addLeds<SK6812, LED_PIN, GRB>(leds, NUM_LEDS);  // GRB ordering is typical
+
   houses[0] = new House();
   houses[0]->createGroup(TYPE_STATIC, &house1_floor[0], (size_t)(sizeof(house1_floor) / sizeof(house1_floor[0])));
   houses[0]->createGroup(TYPE_DYNAMIC, &house1_room1[0], (size_t)(sizeof(house1_room1) / sizeof(house1_room1[0])));
-  houses[0]->createGroup(TYPE_EXPLOSION, &house1_explosion[0], (size_t)(sizeof(house1_explosion) / sizeof(house1_explosion[0])));
-
+  
   houses[1] = new House();
   houses[1]->createGroup(TYPE_STATIC, &house2_floor[0], (size_t)(sizeof(house2_floor) / sizeof(house2_floor[0])));
   houses[1]->createGroup(TYPE_DYNAMIC, &house2_room1[0], (size_t)(sizeof(house2_room1) / sizeof(house2_room1[0])));
   houses[1]->createGroup(TYPE_DYNAMIC, &house2_room2[0], (size_t)(sizeof(house2_room2) / sizeof(house2_room2[0])));
+  houses[1]->createGroup(TYPE_EXPLOSION, &house2_floor_ex[0], (size_t)(sizeof(house2_floor_ex) / sizeof(house2_floor_ex[0])));
 
   houses[2] = new House();
-  houses[2]->createGroup(TYPE_STATIC, &house3_floor[0], (size_t)(sizeof(house3_floor) / sizeof(house3_floor[0])));
-  houses[2]->createGroup(TYPE_DYNAMIC, &house3_room1[0], (size_t)(sizeof(house3_room1) / sizeof(house3_room1[0])));
-  houses[2]->createGroup(TYPE_DYNAMIC, &house3_room2[0], (size_t)(sizeof(house3_room2) / sizeof(house3_room2[0])));
+  houses[2]->createGroup(TYPE_EXPLOSION, &house3_explosion[0], (size_t)(sizeof(house3_explosion) / sizeof(house3_explosion[0])));
+  houses[1]->createGroup(TYPE_STATIC, &house3_floor[0], (size_t)(sizeof(house3_floor) / sizeof(house3_floor[0])));
+  // houses[1]->createGroup(TYPE_DYNAMIC, &house3_room1[0], (size_t)(sizeof(house3_room1) / sizeof(house3_room1[0])));
 
   houses[3] = new House();
   houses[3]->createGroup(TYPE_STATIC, &streetlight[0], (size_t)(sizeof(streetlight) / sizeof(streetlight[0])));
+
 
 
 }
